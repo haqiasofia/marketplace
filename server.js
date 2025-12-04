@@ -2,6 +2,9 @@ require("dotenv").config();
 const express = require("express");
 const cors = require("cors");
 
+const { authenticateToken, authorizeRole } = require("./auth/auth");
+const jwt = require("jsonwebtoken");
+
 const app = express();
 app.use(cors());
 app.use(express.json());
@@ -21,10 +24,10 @@ function normalizeVendorB(data) {
   }));
 }
 
-
 function normalizeVendorC(data) {
   return data.map((item) => {
-    const hargaFinal = item.pricing.base_price + item.pricing.tax;
+    const hargaFinal =
+      item.pricing.base_price + item.pricing.tax;
 
     let name = item.details.name;
     if (item.details.category === "Food") {
@@ -41,12 +44,41 @@ function normalizeVendorC(data) {
   });
 }
 
-
 function getAllProducts() {
-  const b = normalizeVendorB(vendorB);
-  const c = normalizeVendorC(vendorC);
-  return [...b, ...c];
+  return [
+    ...normalizeVendorB(vendorB),
+    ...normalizeVendorC(vendorC)
+  ];
 }
+
+
+app.post("/login", (req, res) => {
+  const { username, password } = req.body;
+
+  // Dummy user (bisa nanti kamu ambil dari database)
+  const users = [
+    { id: 1, username: "admin", password: "admin123", role: "admin" },
+    { id: 2, username: "user", password: "user123", role: "user" }
+  ];
+
+  const user = users.find(
+    u => u.username === username && u.password === password
+  );
+
+  if (!user) {
+    return res.status(401).json({ error: "Username atau password salah" });
+  }
+
+  const token = jwt.sign(
+    { user: { id: user.id, username: user.username, role: user.role }},
+    process.env.JWT_SECRET,
+    { expiresIn: "1h" }
+  );
+
+  res.json({ message: "Login berhasil", token });
+});
+
+
 
 
 app.get("/", (req, res) => {
@@ -54,25 +86,24 @@ app.get("/", (req, res) => {
 });
 
 
-app.get("/products", (req, res) => {
+app.get("/produk", authenticateToken, (req, res) => {
   res.json(getAllProducts());
 });
 
 
-app.get("/vendor/b", (req, res) => {
+app.get("/vendor/b", authenticateToken, (req, res) => {
   res.json(normalizeVendorB(vendorB));
 });
 
 
-app.get("/vendor/c", (req, res) => {
+app.get("/vendor/c", authenticateToken, (req, res) => {
   res.json(normalizeVendorC(vendorC));
 });
 
 
-app.get("/products/:id", (req, res) => {
+app.get("/products/:id", authenticateToken, (req, res) => {
   const id = req.params.id;
-  const all = getAllProducts();
-  const found = all.find((item) => String(item.id) === id);
+  const found = getAllProducts().find((item) => String(item.id) === id);
 
   if (!found) {
     return res.status(404).json({ error: "Produk tidak ditemukan" });
@@ -80,6 +111,14 @@ app.get("/products/:id", (req, res) => {
   res.json(found);
 });
 
+
+app.get("/admin/dashboard",
+  authenticateToken,
+  authorizeRole("admin"),
+  (req, res) => {
+    res.json({ message: "Selamat datang Admin!", user: req.user });
+  }
+);
 
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
