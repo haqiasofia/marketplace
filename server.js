@@ -86,7 +86,7 @@ app.get("/", (req, res) => {
 });
 
 
-app.get("/produk", authenticateToken, (req, res) => {
+app.get("/product", authenticateToken, (req, res) => {
   res.json(getAllProducts());
 });
 
