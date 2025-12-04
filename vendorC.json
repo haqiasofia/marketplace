@@ -1,0 +1,38 @@
+[
+  {
+    "id": 501,
+    "details": {
+      "name": "Nasi Tempong",
+      "category": "Food"
+    },
+    "pricing": {
+      "base_price": 20000,
+      "tax": 2000
+    },
+    "stock": 50
+  },
+  {
+    "id": 502,
+    "details": {
+      "name": "Es Kuwut",
+      "category": "Drink"
+    },
+    "pricing": {
+      "base_price": 12000,
+      "tax": 1200
+    },
+    "stock": 70
+  },
+  {
+    "id": 503,
+    "details": {
+      "name": "Ayam Bakar Madu",
+      "category": "Food"
+    },
+    "pricing": {
+      "base_price": 28000,
+      "tax": 2800
+    },
+    "stock": 40
+  }
+]
