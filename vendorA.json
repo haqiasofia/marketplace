@@ -1,1 +1,14 @@
-[]
+[
+    {
+        "hrg": "15000",
+        "kd_produk": "A001",
+        "ket_stok": "ada",
+        "nm_brg": "Kopi Bubuk 100g"
+    },
+    {
+        "hrg": "12500",
+        "kd_produk": "A002",
+        "ket_stok": "habis",
+        "nm_brg": "Gula Merah"
+    }
+]

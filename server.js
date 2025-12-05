@@ -9,7 +9,6 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
-
 const vendorB = require("./vendorB.json");
 const vendorC = require("./vendorC.json");
 
@@ -43,6 +42,71 @@ function normalizeVendorC(data) {
     };
   });
 }
+
+// Endpoint untuk Vendor C
+// GET - untuk semua produk vendor C
+app.get('/vendor/c', (req, res) => {
+  res.json(vendorC);
+});
+
+// POST - untuk menambahkan produk baru
+app.post('/vendor/c', (req, res) => {
+  const newProduct = {
+    id: req.body.id || (vendorC.length ? vendorC[vendorC.length - 1].id + 1 : 501),
+    details: {
+      name: req.body.details.name,
+      category: req.body.details.category
+    },
+    pricing: {
+      base_price: req.body.pricing.base_price,
+      tax: req.body.pricing.tax
+    },
+    stock: req.body.stock
+  };
+
+  vendorC.push(newProduct);
+  res.status(201).json(newProduct);
+});
+
+// PUT - untuk mengupdate produk berdasarkan ID
+app.put('/vendor/c/:id', (req, res) => {
+  const id = parseInt(req.params.id);
+  const index = vendorC.findIndex(p => p.id === id);
+
+  if (index === -1) {
+    return res.status(404).json({ error: "Produk tidak ditemukan" });
+  }
+
+  vendorC[index] = {
+    ...vendorC[index],
+    ...req.body,
+    details: {
+      ...vendorC[index].details,
+      ...req.body.details
+    },
+    pricing: {
+      ...vendorC[index].pricing,
+      ...req.body.pricing
+    }
+  };
+
+  res.json(vendorC[index]);
+});
+
+// DELETE - untuk menghapus produk berdasarkan ID
+app.delete('/vendor/c/:id', (req, res) => {
+  const id = parseInt(req.params.id);
+  const index = vendorC.findIndex(p => p.id === id);
+
+  if (index === -1) {
+    return res.status(404).json({ error: "Produk tidak ditemukan" });
+  }
+
+  const deleted = vendorC.splice(index, 1);
+  res.json(deleted[0]);
+});
+
+//-----------------------------------
 
 function getAllProducts() {
   return [
