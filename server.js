@@ -9,7 +9,8 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
-const vendorB = require("./vendorB.json");
+
+const vendorB = require("./vendorB");
 const vendorC = require("./vendorC.json");
 
 
@@ -43,9 +44,141 @@ function normalizeVendorC(data) {
   });
 }
 
+function getAllProducts() {
+  return [
+    ...normalizeVendorB(vendorB),
+    ...normalizeVendorC(vendorC)
+  ];
+}
+
+
+app.post("/login", (req, res) => {
+  const { username, password } = req.body;
+
+  
+  const users = [
+    { id: 1, username: "admin", password: "admin123", role: "admin" },
+    { id: 2, username: "user", password: "user123", role: "user" }
+  ];
+
+  const user = users.find(
+    u => u.username === username && u.password === password
+  );
+
+  if (!user) {
+    return res.status(401).json({ error: "Username atau password salah" });
+  }
+
+  const token = jwt.sign(
+    { user: { id: user.id, username: user.username, role: user.role }},
+    process.env.JWT_SECRET,
+    { expiresIn: "1h" }
+  );
+
+  res.json({ message: "Login berhasil", token });
+});
+
+
+ 
+
+app.get("/", (_req, res) => {
+  res.send("Integrator API berjalan dengan baik!");
+});
+
+
+app.get("/product", authenticateToken, (_req, res) => {
+  res.json(getAllProducts());
+});
+
+
+app.get("/vendor/b", authenticateToken, (_req, res) => {
+  res.json(normalizeVendorB(vendorB));
+});
+
+
+app.get("/vendor/c", authenticateToken, (_req, res) => {
+  res.json(normalizeVendorC(vendorC));
+});
+
+
+app.get("/products/:id", authenticateToken, (req, res) => {
+  const id = req.params.id;
+  const found = getAllProducts().find((item) => String(item.id) === id);
+
+  if (!found) {
+    return res.status(404).json({ error: "Produk tidak ditemukan" });
+  }
+  res.json(found);
+});
+
+// POST tambah produk baru (admin)
+app.post("/vendor/b", authenticateToken, authorizeRole("admin"), (req, res) => {
+  const { sku, productName, price, isAvailable } = req.body;
+
+  if (!sku || !productName || !price) {
+    return res.status(400).json({ error: "Data tidak lengkap" });
+  }
+
+  if (vendorBData.some(p => p.sku === sku)) {
+    return res.status(409).json({ error: "SKU sudah ada" });
+  }
+
+  const newProduct = {
+    sku,
+    productName,
+    price,
+    isAvailable: !!isAvailable,
+  };
+
+  vendorBData.push(newProduct);
+
+  res.json({
+    message: "Produk berhasil ditambahkan",
+    data: normalizeVendorB([newProduct])[0]
+  });
+});
+
+// PUT update produk vendor B (admin)
+app.put("/vendor/b/:sku", authenticateToken, authorizeRole("admin"), (req, res) => {
+  const sku = req.params.sku;
+  const index = vendorBData.findIndex(p => p.sku === sku);
+
+  if (index === -1) {
+    return res.status(404).json({ error: "Produk tidak ditemukan" });
+  }
+
+  const { productName, price, isAvailable } = req.body;
+
+  vendorBData[index] = {
+    ...vendorBData[index],
+    productName: productName ?? vendorBData[index].productName,
+    price: price ?? vendorBData[index].price,
+    isAvailable: isAvailable ?? vendorBData[index].isAvailable,
+  };
+
+  res.json({
+    message: "Produk berhasil diperbarui",
+    data: normalizeVendorB([vendorBData[index]])[0]
+  });
+});
+
+// DELETE hapus produk vendor B (admin)
+app.delete("/vendor/b/:sku", authenticateToken, authorizeRole("admin"), (req, res) => {
+  const sku = req.params.sku;
+  const index = vendorBData.findIndex(p => p.sku === sku);
+
+  if (index === -1) {
+    return res.status(404).json({ error: "Produk tidak ditemukan" });
+  }
+
+  vendorBData.splice(index, 1);
+
+  res.json({ message: "Produk berhasil dihapus" });
+});
+
 // Endpoint untuk Vendor C
 // GET - untuk semua produk vendor C
-app.get('/vendor/c', (req, res) => {
+app.get('/vendor/c', (_req, res) => {
   res.json(vendorC);
 });
 
@@ -106,76 +239,6 @@ app.delete('/vendor/c/:id', (req, res) => {
   res.json(deleted[0]);
 });
 
-//-----------------------------------
-
-function getAllProducts() {
-  return [
-    ...normalizeVendorB(vendorB),
-    ...normalizeVendorC(vendorC)
-  ];
-}
-
-
-app.post("/login", (req, res) => {
-  const { username, password } = req.body;
-
-  // Dummy user (bisa nanti kamu ambil dari database)
-  const users = [
-    { id: 1, username: "admin", password: "admin123", role: "admin" },
-    { id: 2, username: "user", password: "user123", role: "user" }
-  ];
-
-  const user = users.find(
-    u => u.username === username && u.password === password
-  );
-
-  if (!user) {
-    return res.status(401).json({ error: "Username atau password salah" });
-  }
-
-  const token = jwt.sign(
-    { user: { id: user.id, username: user.username, role: user.role }},
-    process.env.JWT_SECRET,
-    { expiresIn: "1h" }
-  );
-
-  res.json({ message: "Login berhasil", token });
-});
-
-
-
-
-app.get("/", (req, res) => {
-  res.send("Integrator API berjalan dengan baik!");
-});
-
-
-app.get("/product", authenticateToken, (req, res) => {
-  res.json(getAllProducts());
-});
-
-
-app.get("/vendor/b", authenticateToken, (req, res) => {
-  res.json(normalizeVendorB(vendorB));
-});
-
-
-app.get("/vendor/c", authenticateToken, (req, res) => {
-  res.json(normalizeVendorC(vendorC));
-});
-
-
-app.get("/products/:id", authenticateToken, (req, res) => {
-  const id = req.params.id;
-  const found = getAllProducts().find((item) => String(item.id) === id);
-
-  if (!found) {
-    return res.status(404).json({ error: "Produk tidak ditemukan" });
-  }
-  res.json(found);
-});
-
-
 app.get("/admin/dashboard",
   authenticateToken,
   authorizeRole("admin"),
@@ -184,7 +247,9 @@ app.get("/admin/dashboard",
   }
 );
 
+
+
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
-  console.log(`Server berjalan di http://localhost:${PORT}`);
+  console.log('Server berjalan di http://localhost:${PORT}'   )
 });
